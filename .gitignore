@@ -1,27 +1,19 @@
-# Generated files and local toolchains
 **/build/
-android-sdk/
+**/protocol/
 node_modules/
 __pycache__/
 *.pyc
-*.class
-*.dex
-*.jar
-*.apk
-*.idsig
-!artifacts/SparkBackground-check.apk
-
-# Local credentials and account/runtime data
-.env
-.env.*
+artifacts/*
+!artifacts/SparkBackground-0.6.apk.zip.part*
+!artifacts/SHA256SUMS-0.6.txt
+.env*
 *.p12
-*.pfx
 *.jks
 *.keystore
 *.key
 *.pem
-local.properties
-cookies*.json
 *session*.json
-protocol-sessions/
+*account*.json
+*report*.json
 *.log
+protocol-sessions/

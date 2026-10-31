@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {strictUtf8} from './protocol/lib/services/im/strict-utf8.js';
+test('mobile UTF-8 fallback preserves Unicode and rejects malformed byte sequences',()=>{for(const text of ['hello','中文😀','�',''])assert.equal(strictUtf8(Buffer.from(text)),text);for(const bytes of [[255],[192,175],[237,160,128],[226,130],[244,144,128,128]])assert.throws(()=>strictUtf8(bytes));assert.equal(strictUtf8([239,187,191,65]),'A');});
