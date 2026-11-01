@@ -35,7 +35,7 @@ public final class EngineService extends Service {
                 try(InputStream in=getAssets().open(connect?"engine-connect.cjs":"read".equals(intent.getStringExtra("mode"))?"engine-read.cjs":"send".equals(intent.getStringExtra("mode"))?"engine-send.cjs":"nightly".equals(intent.getStringExtra("mode"))?"engine-nightly.cjs":"fixture".equals(intent.getStringExtra("mode"))?"engine-fixture.cjs":"engine-selftest.cjs"); OutputStream out=new FileOutputStream(script)) {
                     byte[] block=new byte[4096];int count;while((count=in.read(block))!=-1)out.write(block,0,count);
                 }
-                File policy=new File(dir,"policy");policy.mkdirs();for(String name:new String[]{"streak-policy.mjs","attempt-ledger.mjs","streak-runner.mjs","official-streak-adapter.mjs","discover-private.mjs"}){try(InputStream in=getAssets().open(name);OutputStream out=new FileOutputStream(new File(policy,name))){byte[] block=new byte[4096];int count;while((count=in.read(block))!=-1)out.write(block,0,count);}}
+                File policy=new File(dir,"policy");policy.mkdirs();for(String name:new String[]{"streak-policy.mjs","attempt-ledger.mjs","streak-runner.mjs","official-streak-adapter.mjs","discover-private.mjs","today-messages.mjs"}){try(InputStream in=getAssets().open(name);OutputStream out=new FileOutputStream(new File(policy,name))){byte[] block=new byte[4096];int count;while((count=in.read(block))!=-1)out.write(block,0,count);}}
                 File sdk=new File(dir,"protocol");sdk.mkdirs();
                 try(java.util.zip.ZipInputStream archive=new java.util.zip.ZipInputStream(getAssets().open("protocol.zip"))) {
                     java.util.zip.ZipEntry entry;

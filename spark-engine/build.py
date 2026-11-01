@@ -59,7 +59,7 @@ with zipfile.ZipFile(unsigned, "a") as out:
     out.write(ROOT / "THIRD_PARTY_NOTICES.txt", "assets/THIRD_PARTY_NOTICES.txt")
     for name in ["engine-connect.cjs","engine-selftest.cjs","engine-fixture.cjs","engine-read.cjs","engine-send.cjs","engine-nightly.cjs","protocol.zip"]:
         out.write(ROOT / name,"assets/"+name)
-    for name in ["streak-policy.mjs","attempt-ledger.mjs","streak-runner.mjs","official-streak-adapter.mjs","discover-private.mjs"]:
+    for name in ["streak-policy.mjs","attempt-ledger.mjs","streak-runner.mjs","official-streak-adapter.mjs","discover-private.mjs","today-messages.mjs"]:
         out.write(PROJECT / "background-streak-policy" / name,"assets/"+name)
     for name in ["node-mobile-LICENSE.txt","ndk-NOTICE.txt"]:
         out.write(ROOT / "licenses" / name,"assets/"+name)

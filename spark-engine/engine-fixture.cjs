@@ -10,7 +10,7 @@ async function main(){
  const fixed=new Date('2026-10-31T14:00:00Z');
  const raw=state=>JSON.stringify({flame_infos:[{start:1793376000,end:1793462400,state}]});
  let mockDispatches=0,reads=0;
- const input={accountId:'fixture-account',conversationIds:['done','pending','unknown','pending'],now:()=>fixed,
+ const input={accountId:'fixture-account',readTodayActivity:async()=>({state:'not-sent',dateKey:'2026-10-31'}),conversationIds:['done','pending','unknown','pending'],now:()=>fixed,
   readConversation:async id=>id==='unknown'?{readSucceeded:false}:{raw:raw(id==='done'?1:++reads===1?2:1),readSucceeded:true,hasExistingStreak:true},
   sendEmoji:async id=>{if(!createAttemptLedger(dir).has(streakAttemptKey('fixture-account',id,fixed)))throw new Error('ClaimMissing');mockDispatches++;return {acknowledged:true};}};
  const first=await runStreakBatch({...input,ledger:createAttemptLedger(dir)});

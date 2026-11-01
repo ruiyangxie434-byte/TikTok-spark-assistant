@@ -6,6 +6,8 @@ __pycache__/
 artifacts/*
 !artifacts/SparkBackground-0.6.apk.zip.part*
 !artifacts/SHA256SUMS-0.6.txt
+!artifacts/SparkBackground-0.7.apk.zip.part*
+!artifacts/SHA256SUMS-0.7.txt
 .env*
 *.p12
 *.jks
