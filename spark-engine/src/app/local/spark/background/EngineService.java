@@ -14,8 +14,11 @@ public final class EngineService extends Service {
     private final Handler handler=new Handler(Looper.getMainLooper());
     private PowerManager.WakeLock wake;
     private volatile boolean started,finished;
+    private String mode;private boolean dryRun;private long plannedAt,startedAt;
     @Override public int onStartCommand(Intent intent,int flags,int id) {
-        if(started) return START_NOT_STICKY; started=true;
+        if(intent==null)return START_NOT_STICKY;
+        if(started){if("nightly".equals(intent.getStringExtra("mode"))&&!intent.getBooleanExtra("dryRun",false)&&!("nightly".equals(mode)&&!dryRun))sendBroadcast(new Intent(this,ScheduleReceiver.class).setAction(DailySchedule.DEFER).putExtra("plannedAt",intent.getLongExtra("plannedAt",0)));return START_NOT_STICKY;}
+        started=true;mode=intent.getStringExtra("mode");dryRun=intent.getBooleanExtra("dryRun",false);plannedAt=intent.getLongExtra("plannedAt",0);startedAt=System.currentTimeMillis();
         NotificationManager manager=getSystemService(NotificationManager.class);
         manager.createNotificationChannel(new NotificationChannel("engine","本地引擎检查",NotificationManager.IMPORTANCE_LOW));
         PendingIntent open=PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE);
@@ -36,6 +39,7 @@ public final class EngineService extends Service {
                     byte[] block=new byte[4096];int count;while((count=in.read(block))!=-1)out.write(block,0,count);
                 }
                 File policy=new File(dir,"policy");policy.mkdirs();for(String name:new String[]{"streak-policy.mjs","attempt-ledger.mjs","streak-runner.mjs","official-streak-adapter.mjs","discover-private.mjs","today-messages.mjs"}){try(InputStream in=getAssets().open(name);OutputStream out=new FileOutputStream(new File(policy,name))){byte[] block=new byte[4096];int count;while((count=in.read(block))!=-1)out.write(block,0,count);}}
+                try(InputStream in=getAssets().open("daily-report.cjs");OutputStream out=new FileOutputStream(new File(dir,"daily-report.cjs"))){byte[] block=new byte[4096];int count;while((count=in.read(block))!=-1)out.write(block,0,count);}
                 File sdk=new File(dir,"protocol");sdk.mkdirs();
                 try(java.util.zip.ZipInputStream archive=new java.util.zip.ZipInputStream(getAssets().open("protocol.zip"))) {
                     java.util.zip.ZipEntry entry;
@@ -61,7 +65,8 @@ public final class EngineService extends Service {
     private synchronized void report(String state,String reason) {
         if(finished)return;
         try {
-            JSONObject r=new JSONObject();r.put("status",state);r.put("reason",reason);r.put("sentMessages",0);r.put("automaticTaskEnabled",false);
+            JSONObject r="engine-running".equals(state)?new JSONObject():DailyRunLog.read(new File(getFilesDir(),"engine-report.json"));r.put("status",state);r.put("reason",reason);if(!r.has("sentMessages"))r.put("sentMessages",0);r.put("automaticTaskEnabled",getSharedPreferences("schedule",0).getBoolean("enabled",false));r.put("mode",mode);r.put("dryRun",dryRun);r.put("plannedAt",plannedAt);r.put("startedAt",startedAt);r.put("updatedAt",System.currentTimeMillis());if(!"engine-running".equals(state))r.put("finishedAt",System.currentTimeMillis());
+            if("nightly".equals(mode)&&!dryRun)DailyRunLog.write(this,r);
             File temp=new File(getFilesDir(),"engine-report.tmp");Files.write(temp.toPath(),r.toString().getBytes(StandardCharsets.UTF_8));
             java.nio.file.Files.move(temp.toPath(),new File(getFilesDir(),"engine-report.json").toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             Log.i("SparkEngine",r.toString());
@@ -75,7 +80,7 @@ public final class EngineService extends Service {
     }
     @Override public void onTimeout(int id){ report("engine-timeout",null);finishJob(); }
     @Override public void onTimeout(int id,int type){ report("engine-timeout",null);finishJob(); }
-    @Override public void onDestroy(){finishJob();super.onDestroy();}
+    @Override public void onDestroy(){if(!finished)report("engine-cancelled",null);finishJob();super.onDestroy();}
     @Override public IBinder onBind(Intent intent){return null;}
 }
 

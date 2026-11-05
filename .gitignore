@@ -8,6 +8,8 @@ artifacts/*
 !artifacts/SHA256SUMS-0.6.txt
 !artifacts/SparkBackground-0.7.apk.zip.part*
 !artifacts/SHA256SUMS-0.7.txt
+!artifacts/SparkBackground-0.8.apk.zip.part*
+!artifacts/SHA256SUMS-0.8.txt
 .env*
 *.p12
 *.jks
@@ -19,3 +21,7 @@ artifacts/*
 *report*.json
 *.log
 protocol-sessions/
+
+# Private local build/device tooling and diagnostics
+tools-local/
+outputs/

@@ -8,7 +8,7 @@ import android.widget.*;
 import org.json.JSONObject;
 public final class MainActivity extends Activity { public static volatile boolean visible;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private TextView status;
+    private TextView status;private Switch daily;private Button timeButton;
     private final Runnable refresh = new Runnable() { public void run() { render(); handler.postDelayed(this, 1500); } };
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -17,10 +17,11 @@ public final class MainActivity extends Activity { public static volatile boolea
         page.setOrientation(1); page.setPadding(30, 28, 30, 40); scroll.addView(page); setContentView(scroll); getWindow().getInsetsController().setSystemBarsAppearance(android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS, android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
         scroll.setOnApplyWindowInsetsListener((v, i) -> { android.graphics.Insets b = i.getInsets(android.view.WindowInsets.Type.systemBars()); v.setPadding(b.left,b.top,b.right,b.bottom); return i; });
         label(page, "火花助手·后台版", 25);
-        label(page, "手机本地运行 · 每日22点检查", 17);
-        label(page, "每天北京时间22:00，检查已识别的火花好友。今天已续上或你今天已发过消息就跳过。仅在确认待续且你今天没发过消息时，发一次普通表情；聊天记录无法确认时不发送。", 15);
-        label(page, "首次使用需授权。日常任务由手机助手后台运行；会话失效时停止本次任务，需要在助手内重新授权。计划22:00执行；本机系统可能推迟到22:00–23:00。不显示闹钟标记。", 15);
-        Switch daily=new Switch(this);daily.setText("每天北京时间22:00自动续火花");daily.setChecked(getSharedPreferences("schedule",0).getBoolean("enabled",false));page.addView(daily);daily.setOnCheckedChangeListener((v,on)->{try{if(on)DailySchedule.enable(this);else{DailySchedule.disable(this);stopService(new Intent(this,EngineService.class));}render();}catch(Exception error){daily.setChecked(false);Toast.makeText(this,"请先完成真实状态读取，并允许定时权限",Toast.LENGTH_LONG).show();}});
+        label(page, "手机本地运行 · 每日定时检查", 17);
+        label(page, "每天在你选择的北京时间，检查已识别的火花好友。今天已续上或你今天已发过消息就跳过。仅在确认待续且你今天没发过消息时，发一次普通表情；聊天记录无法确认时不发送。", 15);
+        label(page, "首次使用需授权。日常任务由手机助手后台运行；会话失效时停止本次任务，需要在助手内重新授权。系统可能延迟执行，请给当天留出余量。不显示闹钟标记。强行停止助手后，请重新打开一次恢复定时。", 15);
+        timeButton=new Button(this);timeButton.setAllCaps(false);page.addView(timeButton);timeButton.setOnClickListener(v->{android.app.TimePickerDialog picker=new android.app.TimePickerDialog(this,(view,hour,minute)->{try{DailySchedule.setTime(this,hour,minute);render();Toast.makeText(this,"时间已保存："+DailySchedule.timeLabel(this)+"（北京时间）",Toast.LENGTH_SHORT).show();}catch(SecurityException e){Toast.makeText(this,"请先允许定时权限，再保存时间",Toast.LENGTH_LONG).show();}},DailySchedule.hour(this),DailySchedule.minute(this),true);picker.setTitle("每天续火花时间（北京时间）");picker.show();});
+        daily=new Switch(this);daily.setText("每天自动续火花");daily.setChecked(getSharedPreferences("schedule",0).getBoolean("enabled",false));page.addView(daily);daily.setOnCheckedChangeListener((v,on)->{try{if(on)DailySchedule.enable(this);else{DailySchedule.disable(this);stopService(new Intent(this,EngineService.class));}render();}catch(Exception error){daily.setChecked(false);Toast.makeText(this,"请先完成真实状态读取，并允许定时权限",Toast.LENGTH_LONG).show();}});
         button(page, "只读演练每日任务（不发消息）", () -> startForegroundService(new Intent(this,EngineService.class).putExtra("mode","nightly").putExtra("dryRun",true).putExtra("plannedAt",System.currentTimeMillis())));
         button(page, "检查定时唤醒（15秒后模拟，不发消息）", () -> {DailySchedule.test(this);render();});
         button(page, "定时所需系统权限", () -> startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,android.net.Uri.parse("package:"+getPackageName()))));
@@ -47,6 +48,7 @@ public final class MainActivity extends Activity { public static volatile boolea
     }
     private void render() {
         if (status == null) return;
+        String selectedTime=DailySchedule.timeLabel(this);timeButton.setText("续火花时间："+selectedTime+"（北京时间）");daily.setText("每天 "+selectedTime+" 自动续火花");
         try {
             JSONObject r = new JSONObject(getSharedPreferences("probe",0).getString("report","{}"));
             String s = r.optString("status","none"), text;
@@ -85,22 +87,23 @@ public final class MainActivity extends Activity { public static volatile boolea
                 else if(state.startsWith("connect-"))text="账号连接："+("connect-qr-ready".equals(state)?"手机原生引擎已取得官方二维码（未扫码登录）":"connect-online".equals(state)?"已建立协议连接，仍待核对":"尚未完成；请进入连接页面查看");
             }
             java.io.File alarm=new java.io.File(getFilesDir(),"alarm-report.json");if(alarm.exists()){JSONObject a=new JSONObject(new String(java.nio.file.Files.readAllBytes(alarm.toPath()),java.nio.charset.StandardCharsets.UTF_8));String astate=a.optString("status");text+="\n定时唤醒："+("alarm-fired".equals(astate)?"系统已触发模拟检查":"alarm-scheduled".equals(astate)?"等待15秒模拟检查":"alarm-permission-required".equals(astate)?"需要允许闹钟和提醒":"alarm-cancelled".equals(astate)?"已取消模拟检查":"未通过");}
-            boolean enabled=getSharedPreferences("schedule",0).getBoolean("enabled",false);text+="\n\n每日22点任务："+(enabled?"已开启":"未开启");if(enabled){java.text.SimpleDateFormat format=new java.text.SimpleDateFormat("MM-dd HH:mm:ss");format.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Shanghai"));text+="\n下次（北京时间）："+format.format(new java.util.Date(getSharedPreferences("schedule",0).getLong("nextAt",0)));}status.setText(text);
+            boolean enabled=DailySchedule.prefs(this).getBoolean("enabled",false);text+="\n\n每日 "+selectedTime+" 任务："+(enabled?(DailySchedule.exactAllowed(this)?"已开启":"等待定时权限"):"未开启");
+            if(enabled){long next=DailySchedule.prefs(this).getLong("triggerAt",DailySchedule.prefs(this).getLong("nextAt",0));if(next>0)text+="\n下次（北京时间）："+formatTime(next);}
+            JSONObject last=DailyRunLog.latest(this);if(last.length()>0){long at=last.optLong("plannedAt");text+="\n\n最近自动任务："+(at>0?formatTime(at):"旧版记录无日期")+"\n"+dailyStatus(last);if(last.has("sentMessages"))text+="\n服务器确认发送 "+last.optInt("sentMessages")+"，官方点亮确认 "+last.optInt("verifiedDone");}
+            status.setText(text);
         } catch(Exception e) { status.setText("检查记录暂不可读，请重试。"); }
     }
-    @Override public void dump(String prefix, java.io.FileDescriptor fd, java.io.PrintWriter writer, String[] args) {
-        try {
-            java.io.File file=new java.io.File(getFilesDir(),"engine-report.json");
-            if(!file.exists() || file.length()>10000) {writer.println("SPARK_ENGINE_REPORT unavailable");return;}
-            JSONObject raw=new JSONObject(new String(java.nio.file.Files.readAllBytes(file.toPath()),java.nio.charset.StandardCharsets.UTF_8));
-            JSONObject safe=new JSONObject();
-            for(String key:new String[]{"status","reason","frames","request","runtime","platform","elapsedMs","cryptoReady","networkReady","sdkReady","timerWhileUiVisible","finishedWhileUiVisible","totalMs","stage","fixtureOnly","authenticationConfirmed","sentMessages","automaticTaskEnabled","mockDispatches","privateCount","candidateCount","done","pending","recover","inactive","unknown","readErrors","pages","complete","freshReadConfirmed","scope","friendCount","discoveredConversations","discoveredThreads","inboxes","namedCount","streakFieldNames","positiveCounterFields","dispatchAttempts","verifiedDone","skipped","dryRun","wouldSend","discoveryComplete","discoveredCount","discoveryErrors","alreadySentToday","historyUnknown","historyReasons"})
-                if(raw.has(key))safe.put(key,raw.get(key));
-            writer.println("SPARK_ENGINE_REPORT "+safe.toString());JSONObject schedule=new JSONObject();schedule.put("enabled",getSharedPreferences("schedule",0).getBoolean("enabled",false));schedule.put("nextAt",getSharedPreferences("schedule",0).getLong("nextAt",0));writer.println("SPARK_SCHEDULE_REPORT "+schedule.toString());
-            java.io.File alarm=new java.io.File(getFilesDir(),"alarm-report.json");if(alarm.exists()&&alarm.length()<10000)writer.println("SPARK_ALARM_REPORT "+new String(java.nio.file.Files.readAllBytes(alarm.toPath()),java.nio.charset.StandardCharsets.UTF_8));
-        } catch(Exception e) {writer.println("SPARK_ENGINE_REPORT unavailable");}
-    }
-    @Override public void onResume() { super.onResume(); visible=true; recordEngineUi(true); handler.post(refresh); }
+    private String formatTime(long at){java.text.SimpleDateFormat f=new java.text.SimpleDateFormat("MM-dd HH:mm:ss");f.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Shanghai"));return f.format(new java.util.Date(at));}
+    private String dailyStatus(JSONObject r){String state=r.optString("status");if("daily-missed".equals(state))return "未执行；已恢复后续定时";if("daily-permission-required".equals(state))return "需要允许定时权限";if("daily-deferred".equals(state))return "其他检查占用，已安排一次延后检查";if("daily-service-busy".equals(state))return "后台检查仍被占用，本次未执行";if("daily-service-blocked".equals(state))return "系统阻止后台启动";if("nightly-authorization-required".equals(state))return "授权已失效，需要在助手重新连接";if("nightly-complete".equals(state))return "检查完成：已续 "+r.optInt("done")+"，你已发过 "+r.optInt("alreadySentToday")+"，未知跳过 "+r.optInt("unknown");if("engine-timeout".equals(state)||"nightly-timeout".equals(state))return "任务超时；不会重复已尝试的消息";if("engine-cancelled".equals(state)||"nightly-disabled".equals(state))return "本次已停止";if("nightly-failed".equals(state)||"engine-error".equals(state))return "检查失败："+r.optString("reason","原因未确认");if(!r.has("finishedAt")&&r.optLong("updatedAt")>0&&System.currentTimeMillis()-r.optLong("updatedAt")>600000)return "上次任务可能中断，请做只读检查";return "处理中："+state;}
+    private JSONObject safeReport(JSONObject raw)throws org.json.JSONException{JSONObject safe=new JSONObject();for(String key:new String[]{"status","reason","frames","request","runtime","platform","elapsedMs","cryptoReady","networkReady","sdkReady","timerWhileUiVisible","finishedWhileUiVisible","totalMs","stage","fixtureOnly","authenticationConfirmed","sentMessages","automaticTaskEnabled","mockDispatches","privateCount","candidateCount","done","pending","recover","inactive","unknown","readErrors","pages","complete","freshReadConfirmed","scope","friendCount","discoveredConversations","discoveredThreads","inboxes","namedCount","streakFieldNames","positiveCounterFields","dispatchAttempts","verifiedDone","skipped","dryRun","wouldSend","discoveryComplete","discoveredCount","discoveryErrors","alreadySentToday","historyUnknown","historyReasons","plannedAt","startedAt","updatedAt","finishedAt","mode"})if(raw.has(key))safe.put(key,raw.get(key));return safe;}
+    @Override public void dump(String prefix,java.io.FileDescriptor fd,java.io.PrintWriter writer,String[] args){try{
+        writer.println("SPARK_ENGINE_REPORT "+safeReport(DailyRunLog.read(new java.io.File(getFilesDir(),"engine-report.json"))));
+        JSONObject schedule=new JSONObject();schedule.put("enabled",DailySchedule.prefs(this).getBoolean("enabled",false));schedule.put("hour",DailySchedule.hour(this));schedule.put("minute",DailySchedule.minute(this));schedule.put("nextAt",DailySchedule.prefs(this).getLong("nextAt",0));schedule.put("triggerAt",DailySchedule.prefs(this).getLong("triggerAt",0));schedule.put("retryAt",DailySchedule.prefs(this).getLong("retryAt",0));schedule.put("exactAllowed",DailySchedule.exactAllowed(this));writer.println("SPARK_SCHEDULE_REPORT "+schedule);
+        writer.println("SPARK_DAILY_REPORT "+safeReport(DailyRunLog.latest(this)));org.json.JSONArray raw=DailyRunLog.history(this),history=new org.json.JSONArray();for(int i=0;i<raw.length();i++)history.put(safeReport(raw.getJSONObject(i)));writer.println("SPARK_DAILY_HISTORY "+history);
+        java.io.File alarm=new java.io.File(getFilesDir(),"alarm-report.json");if(alarm.exists())writer.println("SPARK_ALARM_REPORT "+DailyRunLog.read(alarm));
+        if(args.length==2&&"target".equals(args[0])){JSONObject snapshot=DailyRunLog.read(new java.io.File(getFilesDir(),"state-read-private.json"),2000000),report=new JSONObject();org.json.JSONArray rows=snapshot.optJSONArray("conversations");int matches=0;for(int i=0;rows!=null&&i<rows.length();i++){JSONObject row=rows.getJSONObject(i);if(args[1].equalsIgnoreCase(row.optString("displayName"))){matches++;report.put("state",row.optString("state"));report.put("readAt",row.optLong("readAt"));}}report.put("matches",matches);report.put("snapshotAt",snapshot.optLong("readAt"));writer.println("SPARK_TARGET_REPORT "+report);}
+    }catch(Exception e){writer.println("SPARK_REPORT unavailable");}}
+    @Override public void onResume() { super.onResume(); DailySchedule.restore(this); visible=true; recordEngineUi(true); handler.post(refresh); }
     @Override public void onPause() { visible=false; recordEngineUi(false); handler.removeCallbacks(refresh); super.onPause(); }
     private void recordEngineUi(boolean state) {
         try {java.nio.file.Files.write(new java.io.File(getFilesDir(),"engine-ui.json").toPath(),("{\"visible\":"+state+"}").getBytes(java.nio.charset.StandardCharsets.UTF_8));}catch(Exception ignored){}

@@ -29,7 +29,7 @@ with zipfile.ZipFile(ROOT / "protocol.zip") as archive:
         target=(ROOT / "protocol" / item.filename).resolve()
         if not target.is_relative_to((ROOT / "protocol").resolve()): raise ValueError("Invalid dependency path")
     archive.extractall(ROOT / "protocol")
-run("node", "--test", *sorted((PROJECT / "background-streak-policy").glob("*.test.mjs")), ROOT / "probe.test.mjs", ROOT / "session-check.test.mjs", ROOT / "mobile-compat.test.mjs")
+run("node", "--test", *sorted((PROJECT / "background-streak-policy").glob("*.test.mjs")), ROOT / "probe.test.mjs", ROOT / "session-check.test.mjs", ROOT / "mobile-compat.test.mjs", ROOT / "daily-report.test.mjs")
 if args.test_only:
     raise SystemExit(0)
 
@@ -57,7 +57,7 @@ with zipfile.ZipFile(unsigned, "a") as out:
     out.write(BUILD / "probe.js", "assets/probe.js")
     out.write(BUILD / "session-check.js", "assets/session-check.js")
     out.write(ROOT / "THIRD_PARTY_NOTICES.txt", "assets/THIRD_PARTY_NOTICES.txt")
-    for name in ["engine-connect.cjs","engine-selftest.cjs","engine-fixture.cjs","engine-read.cjs","engine-send.cjs","engine-nightly.cjs","protocol.zip"]:
+    for name in ["engine-connect.cjs","engine-selftest.cjs","engine-fixture.cjs","engine-read.cjs","engine-send.cjs","engine-nightly.cjs","daily-report.cjs","protocol.zip"]:
         out.write(ROOT / name,"assets/"+name)
     for name in ["streak-policy.mjs","attempt-ledger.mjs","streak-runner.mjs","official-streak-adapter.mjs","discover-private.mjs","today-messages.mjs"]:
         out.write(PROJECT / "background-streak-policy" / name,"assets/"+name)

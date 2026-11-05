@@ -1,11 +1,12 @@
 "use strict";
 const fs=require('node:fs'),path=require('node:path');if(!globalThis.crypto)globalThis.crypto=require('node:crypto').webcrypto;
 const {pathToFileURL}=require('node:url'),base=path.join(__dirname,'..');
+const {writeDailyReport}=require('./daily-report.cjs');
 const config=JSON.parse(fs.readFileSync(path.join(base,'engine-config.json'),'utf8'));
 let client,ending=false,started=false;
-const result={status:'nightly-restoring',dryRun:config.dryRun===true,authenticationConfirmed:false,sentMessages:0,dispatchAttempts:0,verifiedDone:0,done:0,skipped:0,unknown:0,historyReasons:{},wouldSend:0,automaticTaskEnabled:config.enabled===true};
-function write(){const data=JSON.stringify(result),temp=path.join(base,'nightly-report.tmp');fs.writeFileSync(temp,data);fs.renameSync(temp,path.join(base,'engine-report.json'));fs.writeFileSync(path.join(base,'last-nightly-report.json'),data);}
-async function finish(status){if(ending)return;ending=true;result.status=status;write();try{await client?.logout();}catch{}process.exit(0);}
+const result={status:'nightly-restoring',plannedAt:config.plannedAt,startedAt:Date.now(),dryRun:config.dryRun===true,authenticationConfirmed:false,sentMessages:0,dispatchAttempts:0,verifiedDone:0,done:0,skipped:0,unknown:0,historyReasons:{},wouldSend:0,automaticTaskEnabled:config.enabled===true};
+function write(finished=false){writeDailyReport(base,result,Date.now(),finished);}
+async function finish(status){if(ending)return;ending=true;result.status=status;write(true);try{await client?.logout();}catch{}process.exit(0);}
 function failure(error){if(ending)return;result.reason=typeof error?.code==='string'?error.code:error?.name??'Error';void finish('nightly-failed');}
 process.on('uncaughtException',failure);process.on('unhandledRejection',failure);setTimeout(()=>void finish('nightly-timeout'),295000).unref();
 async function execute(account){
